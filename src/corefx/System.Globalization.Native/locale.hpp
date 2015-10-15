@@ -37,12 +37,13 @@ u_charsToUChars_safe
 
 Copies the given null terminated char* to UChar with error checking. Replacement for ICU u_charsToUChars
 */
-UErrorCode u_charsToUChars_safe(const char *str, UChar* value, int32_t valueLength);
+UErrorCode u_charsToUChars_safe(const char* str, UChar* value, int32_t valueLength);
 
 /*
 Function:
 FixupLocaleName
 
-Replace underscores with hyphens to interop with existing .NET code
+Replace underscores with hyphens to interop with existing .NET code.
+Returns the length of the string.
 */
-void FixupLocaleName(UChar* value, int32_t valueLength);
+int FixupLocaleName(UChar* value, int32_t valueLength);

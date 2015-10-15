@@ -748,8 +748,6 @@ STDAPI CreateStreamOnHGlobal(PVOID hGlobal, BOOL fDeleteOnRelease, interface ISt
 STDAPI IIDFromString(LPOLESTR lpsz, IID* lpiid);
 STDAPI_(int) StringFromGUID2(REFGUID rguid, LPOLESTR lpsz, int cchMax); 
 
-STDAPI CoCreateGuid(OUT GUID * pguid);
-
 /******************* CRYPT **************************************/
 
 #define PUBLICKEYBLOB           0x6
@@ -1365,12 +1363,14 @@ typedef VOID (__stdcall *WAITORTIMERCALLBACK)(PVOID, BOOLEAN);
 #define DIRECTORY_SEPARATOR_STR_W W("/")
 #define PATH_SEPARATOR_CHAR_W W(':')
 #define PATH_SEPARATOR_STR_W W(":")
+#define VOLUME_SEPARATOR_CHAR_W W('/')
 #else // PLATFORM_UNIX
 #define DIRECTORY_SEPARATOR_CHAR_A '\\'
 #define DIRECTORY_SEPARATOR_CHAR_W W('\\')
 #define DIRECTORY_SEPARATOR_STR_W W("\\")
 #define PATH_SEPARATOR_CHAR_W W(';')
 #define PATH_SEPARATOR_STR_W W(";")
+#define VOLUME_SEPARATOR_CHAR_W W(':')
 #endif // PLATFORM_UNIX
 
 #ifndef IMAGE_IMPORT_DESC_FIELD

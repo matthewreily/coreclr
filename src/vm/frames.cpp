@@ -477,19 +477,23 @@ VOID Frame::Pop(Thread *pThread)
              (*m_Next->GetGSCookiePtr() == GetProcessGSCookie()));
 
     pThread->SetFrame(m_Next);
+    m_Next = NULL;
 }
 
-#ifdef FEATURE_PAL
-Frame::~Frame()
-{
-    // When the frame is destroyed, make sure it is no longer in the
-    // frame chain managed by the Thread.
-    Thread* pThread = GetThread();
-    if (pThread != NULL && pThread->GetFrame() == this)
+#ifdef FEATURE_PAL     
+Frame::~Frame()        
+{      
+    if (m_Next != NULL)
     {
-        Pop(pThread);
+        // When the frame is destroyed, make sure it is no longer in the
+        // frame chain managed by the Thread.
+        Thread* pThread = GetThread();
+        if (pThread != NULL && pThread->GetFrame() == this)
+        {
+            Pop(pThread);
+        }
     }
-}
+}      
 #endif // FEATURE_PAL
 
 //-----------------------------------------------------------------------

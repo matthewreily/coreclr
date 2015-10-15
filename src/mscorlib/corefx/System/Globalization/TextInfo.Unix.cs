@@ -30,27 +30,54 @@ namespace System.Globalization
         {
             Contract.Assert(s != null);
 
-            char[] buf = new char[s.Length];
-
-            fixed(char* pBuf = buf)
+            if (s.Length == 0)
             {
-                Interop.GlobalizationInterop.ChangeCase(s, s.Length, pBuf, buf.Length, toUpper, m_needsTurkishCasing);
+                return string.Empty;
             }
 
-            return new string(buf);
+            string result = string.FastAllocateString(s.Length);
+
+            fixed (char* pResult = result)
+            {
+                if (IsAsciiCasingSameAsInvariant && s.IsAscii())
+                {
+                    fixed (char* pSource = s)
+                    {
+                        int length = s.Length;
+                        char* a = pSource, b = pResult;
+                        if (toUpper)
+                        {
+                            while (length-- != 0)
+                            {
+                                *b++ = ToUpperAsciiInvariant(*a++);
+                            }
+                        }
+                        else
+                        {
+                            while (length-- != 0)
+                            {
+                                *b++ = ToLowerAsciiInvariant(*a++);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Interop.GlobalizationInterop.ChangeCase(s, s.Length, pResult, result.Length, toUpper, m_needsTurkishCasing);
+                }
+            }
+
+            return result;
         }
 
         [System.Security.SecuritySafeCritical]
         private unsafe char ChangeCase(char c, bool toUpper)
         {
-            char* pSrc = stackalloc char[1];
-            char* pDst = stackalloc char[1];
+            char dst = default(char);
 
-            pSrc[0] = c;
+            Interop.GlobalizationInterop.ChangeCase(&c, 1, &dst, 1, toUpper, m_needsTurkishCasing);
 
-            Interop.GlobalizationInterop.ChangeCase(pSrc, 1, pDst, 1, toUpper, m_needsTurkishCasing);
-
-            return pDst[0];
+            return dst;
         }
 
         // -----------------------------

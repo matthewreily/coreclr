@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12.2)
 
+include_directories(SYSTEM /usr/local/include)
+
 include(configure.cmake)
 
 project(coreclrpal)
@@ -16,11 +18,6 @@ endif()
 # Include directories
 
 include_directories(include)
-
-if(CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
-  # required for libunwind
-  include_directories("/usr/local/include/")
-endif()
 
 # Compile options
 
@@ -141,7 +138,6 @@ set(SOURCES
   misc/interlock.cpp
   misc/miscpalapi.cpp
   misc/msgbox.cpp
-  misc/stackstring.cpp
   misc/strutil.cpp
   misc/sysinfo.cpp
   misc/time.cpp
@@ -225,6 +221,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Linux)
     dl
     unwind
     unwind-generic
+    uuid
   )
 endif(CMAKE_SYSTEM_NAME STREQUAL Linux)
 
@@ -253,6 +250,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 
 add_subdirectory(examples)
+
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+add_subdirectory(eventprovider)
+endif(CMAKE_SYSTEM_NAME STREQUAL Linux)
 
 # Install the static PAL library for VS
 install (TARGETS coreclrpal DESTINATION lib)

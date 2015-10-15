@@ -2054,6 +2054,9 @@ HRESULT Debugger::Startup(void)
     }
 #endif
 
+#ifdef FEATURE_PAL
+    PAL_InitializeDebug();
+#endif // FEATURE_PAL
 
     // Lazily initialize the interop-safe heap
 
@@ -7714,7 +7717,7 @@ HRESULT Debugger::SendException(Thread *pThread,
     if (fAttaching)
     {
         JitAttach(pThread, pExceptionInfo, managedEventNeeded, FALSE);
-        // If the jit-attach occured, CORDebuggerAttached() may now be true and we can 
+        // If the jit-attach occurred, CORDebuggerAttached() may now be true and we can 
         // just act as if a debugger was always attached.
     }
 

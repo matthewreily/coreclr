@@ -105,11 +105,11 @@ BOOL IsExceptionFromManagedCode(const EXCEPTION_RECORD * pExceptionRecord)
     UINT_PTR address = reinterpret_cast<UINT_PTR>(pExceptionRecord->ExceptionAddress);
 
     // An exception code of EXCEPTION_COMPLUS indicates a managed exception
-    // has occured (most likely due to executing a "throw" instruction).
+    // has occurred (most likely due to executing a "throw" instruction).
     //
     // Also, a hardware level exception may not have an exception code of
     // EXCEPTION_COMPLUS. In this case, an exception address that resides in
-    // managed code indicates a managed exception has occured.
+    // managed code indicates a managed exception has occurred.
     return (IsComPlusException(pExceptionRecord) ||
             (ExecutionManager::IsManagedCode((PCODE)address)));
 }
@@ -4266,7 +4266,6 @@ LONG WatsonLastChance(                  // EXCEPTION_CONTINUE_SEARCH, _CONTINUE_
         LOG((LF_EH, LL_INFO10, "WatsonLastChance: Debugger not attached at sp %p ...\n", GetCurrentSP()));
 
 #ifndef FEATURE_PAL
-
         BOOL bRunDoFaultReport = TRUE;
         FaultReportResult result = FaultReportResultQuit;
 
@@ -4323,7 +4322,7 @@ LONG WatsonLastChance(                  // EXCEPTION_CONTINUE_SEARCH, _CONTINUE_
 
                     LOG((LF_EH, LL_INFO10, "D::WLC: Call RaiseFailFastExceptionOnWin7\n"));
                     RaiseFailFastExceptionOnWin7(pExceptionInfo == NULL ? NULL : pExceptionInfo->ExceptionRecord,
-                                                 pExceptionInfo == NULL ? NULL : pExceptionInfo->ContextRecord);
+                        pExceptionInfo == NULL ? NULL : pExceptionInfo->ContextRecord);
                     STRESS_LOG0(LF_CORDB,LL_INFO10, "D::WLC: Return from RaiseFailFastExceptionOnWin7\n");
                 }
             }
@@ -4470,12 +4469,15 @@ LONG WatsonLastChance(                  // EXCEPTION_CONTINUE_SEARCH, _CONTINUE_
                 UNREACHABLE_MSG("Unknown FaultReportResult");
                 break;
         }
-#endif // !FEATURE_PAL
     }
     // When the debugger thread detects that the debugger process is abruptly terminated, and triggers
     // a failfast error, CORDebuggerAttached() will be TRUE, but IsDebuggerPresent() will be FALSE.
     // If IsDebuggerPresent() is FALSE, do not try to notify the deubgger.
     else if (CORDebuggerAttached() && IsDebuggerPresent())
+#else
+    }
+    else if (CORDebuggerAttached())
+#endif // !FEATURE_PAL
     {
         // Already debugging with a managed debugger.  Should let that debugger know.
         LOG((LF_EH, LL_INFO100, "WatsonLastChance: Managed debugger already attached at sp %p ...\n", GetCurrentSP()));
@@ -4710,15 +4712,18 @@ LONG UserBreakpointFilter(EXCEPTION_POINTERS* pEP)
     }
     CONTRACTL_END;
 
-#if defined(DEBUGGING_SUPPORTED) && !defined(FEATURE_PAL)
+#ifdef DEBUGGING_SUPPORTED
     // Invoke the unhandled exception filter, bypassing any further first pass exception processing and treating
     // user breakpoints as if they're unhandled exceptions right away.
     //
     // @todo: The InternalUnhandledExceptionFilter can trigger.
     CONTRACT_VIOLATION(GCViolation | ThrowsViolation | ModeViolation | FaultViolation | FaultNotFatal);
 
-
+#ifdef FEATURE_PAL
+    int result = COMUnhandledExceptionFilter(pEP);
+#else
     int result = UnhandledExceptionFilter(pEP);
+#endif
 
     if (result == EXCEPTION_CONTINUE_SEARCH)
     {
@@ -4729,7 +4734,7 @@ LONG UserBreakpointFilter(EXCEPTION_POINTERS* pEP)
         // here.
         return EXCEPTION_CONTINUE_EXECUTION;
     }
-#endif // DEBUGGING_SUPPORTED && !FEATURE_PAL
+#endif // DEBUGGING_SUPPORTED
 
     if(ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context, FailFast))
     {
@@ -5206,7 +5211,7 @@ LONG InternalUnhandledExceptionFilter_Worker(
     //
     // This needs to be done before the check for TSNC_ProcessedUnhandledException because it is perfectly
     // legitimate (though rare) for the debugger to be inspecting exceptions which are nested in finally
-    // clauses that run after an unhandled exception has already occured on the thread
+    // clauses that run after an unhandled exception has already occurred on the thread
     if ((pThread != NULL) && pThread->IsExceptionInProgress())
     {
         LOG((LF_EH, LL_INFO1000, "InternalUnhandledExceptionFilter_Worker: Set unhandled exception flag at %p\n",
@@ -5403,7 +5408,7 @@ LONG InternalUnhandledExceptionFilter_Worker(
 #endif // DEBUGGING_SUPPORTED
 
 
-#ifdef FEATURE_EVENT_TRACE    
+#if defined(FEATURE_EVENT_TRACE) && !defined(FEATURE_PAL)
         DoReportForUnhandledException(pParam->pExceptionInfo);
 #endif // FEATURE_EVENT_TRACE    
 
@@ -7054,7 +7059,7 @@ LONG FilterAccessViolation(PEXCEPTION_POINTERS pExceptionPointers, LPVOID lpvPar
  * Returns whether this is an exception the EE knows how to intercept and continue from.
  *
  * Parameters:
- *   pThread - The thread the exception occured on.
+ *   pThread - The thread the exception occurred on.
  *
  * Returns:
  *   TRUE if the exception on the thread is interceptable or not.
@@ -7182,7 +7187,7 @@ IsDebuggerFault(EXCEPTION_RECORD *pExceptionRecord,
     // to fixup the state before any other part of the system uses it (we do it here since only the debugger
     // uses single step functionality).
 
-    // First ask the emulation itself whether this exception occured while single stepping was enabled. If so
+    // First ask the emulation itself whether this exception occurred while single stepping was enabled. If so
     // it will fix up the context to be consistent again and return true. If so and the exception was
     // EXCEPTION_BREAKPOINT then we translate it to EXCEPTION_SINGLE_STEP (otherwise we leave it be, e.g. the
     // instruction stepped caused an access violation).  since this is called from our VEH there might not
@@ -7704,7 +7709,7 @@ LONG WINAPI CLRVectoredExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
     // not already have one allocated.  Thus, if we OOM during the setting up of the
     // thread, the log buffer will not be allocated and this will try to do so.  Thus,
     // all STRESS_LOGs in here need to be after you have guaranteed the allocation has
-    // already occured.
+    // already occurred.
     //
 
     Thread *pThread;
@@ -7808,7 +7813,7 @@ LONG WINAPI CLRVectoredExceptionHandlerPhase2(PEXCEPTION_POINTERS pExceptionInfo
     // not already have one allocated.  Thus, if we OOM during the setting up of the
     // thread, the log buffer will not be allocated and this will try to do so.  Thus,
     // all STRESS_LOGs in here need to be after you have guaranteed the allocation has
-    // already occured.
+    // already occurred.
     //
 
     PEXCEPTION_RECORD pExceptionRecord  = pExceptionInfo->ExceptionRecord;
@@ -7989,7 +7994,7 @@ VEH_ACTION WINAPI CLRVectoredExceptionHandlerPhase3(PEXCEPTION_POINTERS pExcepti
     // not already have one allocated.  Thus, if we OOM during the setting up of the
     // thread, the log buffer will not be allocated and this will try to do so.  Thus,
     // all STRESS_LOGs in here need to be after you have guaranteed the allocation has
-    // already occured.
+    // already occurred.
     //
 
     // Handle special cases which are common amongst all filters.
@@ -13828,7 +13833,7 @@ VOID DECLSPEC_NORETURN RealCOMPlusThrowSO()
 
     if (breakOnSO != 0)
     {
-        _ASSERTE(!"SO occured");
+        _ASSERTE(!"SO occurred");
     }
 #endif
 

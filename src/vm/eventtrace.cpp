@@ -232,6 +232,7 @@ extern "C"
 /*************************************/
 /* Function to append a frame to an existing stack */
 /*************************************/
+#if  !defined(FEATURE_PAL)
 void ETW::SamplingLog::Append(SIZE_T currentFrame)
 {
     LIMITED_METHOD_CONTRACT;
@@ -323,7 +324,6 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::SaveCurrentStack(int skip
     if (pThread->m_State & Thread::TS_Hijacked) {
         return ETW::SamplingLog::UnInitialized;
     }
-
     if (pThread->IsEtwStackWalkInProgress())
     {
         return ETW::SamplingLog::InProgress;
@@ -412,6 +412,7 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::SaveCurrentStack(int skip
     return ETW::SamplingLog::Completed;
 }
 
+#endif // !defined(FEATURE_PAL)
 #endif // !FEATURE_REDHAWK
 
 /****************************************************************************/
@@ -1198,6 +1199,7 @@ void BulkComLogger::FlushRcw()
 
     unsigned short instance = GetClrInstanceId();
 
+#if !defined(FEATURE_PAL)
     EVENT_DATA_DESCRIPTOR eventData[3];
     EventDataDescCreate(&eventData[0], &m_currRcw, sizeof(const unsigned int));
     EventDataDescCreate(&eventData[1], &instance, sizeof(const unsigned short));
@@ -1205,6 +1207,9 @@ void BulkComLogger::FlushRcw()
 
     ULONG result = EventWrite(Microsoft_Windows_DotNETRuntimeHandle, &GCBulkRCW, _countof(eventData), eventData);
     _ASSERTE(result == ERROR_SUCCESS);
+#else
+// UNIXTODO: "Eventing Not Implemented"
+#endif // !defined(FEATURE_PAL)
 
     m_currRcw = 0;
 }
@@ -1282,6 +1287,7 @@ void BulkComLogger::FlushCcw()
 
     unsigned short instance = GetClrInstanceId();
 
+#if !defined(FEATURE_PAL)
     EVENT_DATA_DESCRIPTOR eventData[3];
     EventDataDescCreate(&eventData[0], &m_currCcw, sizeof(const unsigned int));
     EventDataDescCreate(&eventData[1], &instance, sizeof(const unsigned short));
@@ -1289,6 +1295,10 @@ void BulkComLogger::FlushCcw()
 
     ULONG result = EventWrite(Microsoft_Windows_DotNETRuntimeHandle, &GCBulkRootCCW, _countof(eventData), eventData);
     _ASSERTE(result == ERROR_SUCCESS);
+#else
+// UNIXTODO: "Eventing Not Implemented"
+#endif //!defined(FEATURE_PAL)
+
 
     m_currCcw = 0;
 }
@@ -1480,6 +1490,7 @@ void BulkStaticsLogger::FireBulkStaticsEvent()
     unsigned short instance = GetClrInstanceId();
     unsigned __int64 appDomain = (unsigned __int64)m_domain;
 
+#if !defined(FEATURE_PAL)
     EVENT_DATA_DESCRIPTOR eventData[4];
     EventDataDescCreate(&eventData[0], &m_count, sizeof(const unsigned int)  );
     EventDataDescCreate(&eventData[1], &appDomain, sizeof(unsigned __int64)  );
@@ -1488,6 +1499,9 @@ void BulkStaticsLogger::FireBulkStaticsEvent()
 
     ULONG result = EventWrite(Microsoft_Windows_DotNETRuntimeHandle, &GCBulkRootStaticVar, _countof(eventData), eventData);
     _ASSERTE(result == ERROR_SUCCESS);
+#else
+// UNIXTODO: "Eventing Not Implemented"
+#endif //!defined(FEATURE_PAL)
 
     m_used = 0;
     m_count = 0;
@@ -1642,12 +1656,13 @@ void BulkStaticsLogger::LogAllStatics()
 // be logged via ETW in bulk
 //---------------------------------------------------------------------------------------
 
-BulkTypeValue::BulkTypeValue() : cTypeParameters(0), rgTypeParameters()
+BulkTypeValue::BulkTypeValue() : cTypeParameters(0)
 #ifdef FEATURE_REDHAWK
 , ullSingleTypeParameter(0)
 #else // FEATURE_REDHAWK
 , sName()
 #endif // FEATURE_REDHAWK
+, rgTypeParameters()
 {
     LIMITED_METHOD_CONTRACT;
     ZeroMemory(&fixedSizedData, sizeof(fixedSizedData));
@@ -1686,6 +1701,7 @@ void BulkTypeValue::Clear()
 //
 //
 
+#if !defined(FEATURE_PAL)
 void BulkTypeEventLogger::FireBulkTypeEvent()
 {
     LIMITED_METHOD_CONTRACT;
@@ -1774,6 +1790,12 @@ void BulkTypeEventLogger::FireBulkTypeEvent()
     m_nBulkTypeValueByteCount = 0;
 }
 
+#else
+void BulkTypeEventLogger::FireBulkTypeEvent()
+{
+// UNIXTODO: "Eventing Not Implemented"
+}
+#endif //!defined(FEATURE_PAL)
 #ifndef FEATURE_REDHAWK
 
 //---------------------------------------------------------------------------------------
@@ -2278,9 +2300,9 @@ VOID ETW::GCLog::RootReference(
     switch (nRootKind)
     {
     case kEtwGCRootKindStack:
-#ifndef FEATURE_REDHAWK
+#if !defined (FEATURE_REDHAWK) && (defined(GC_PROFILING) || defined (DACCESS_COMPILE))
         pvRootID = profilingScanContext->pMD;
-#endif // !FEATURE_REDHAWK
+#endif // !defined (FEATURE_REDHAWK) && (defined(GC_PROFILING) || defined (DACCESS_COMPILE))
         break;
 
     case kEtwGCRootKindHandle:
@@ -2356,7 +2378,6 @@ VOID ETW::GCLog::RootReference(
         }
     }
 }
-
 
 //---------------------------------------------------------------------------------------
 //
@@ -4205,6 +4226,7 @@ Return Value:
 
 --*/
 
+#if !defined(FEATURE_PAL)
 void InitializeEventTracing()
 {
     CONTRACTL
@@ -4235,7 +4257,6 @@ void InitializeEventTracing()
     // providers can do so now
     ETW::TypeSystemLog::PostRegistrationInit();
 }
-
 HRESULT ETW::CEtwTracer::Register()
 {
     WRAPPER_NO_CONTRACT;
@@ -4298,7 +4319,6 @@ Return Value:
 HRESULT ETW::CEtwTracer::UnRegister() 
 {
     LIMITED_METHOD_CONTRACT;
-
     EventUnregisterMicrosoft_Windows_DotNETRuntime();
     EventUnregisterMicrosoft_Windows_DotNETRuntimePrivate();
     EventUnregisterMicrosoft_Windows_DotNETRuntimeRundown();
@@ -4483,7 +4503,11 @@ extern "C"
 
     }
 }
+#else
 
+void InitializeEventTracing(){}
+
+#endif // !defined(FEATURE_PAL)
 #endif // FEATURE_REDHAWK
 
 #ifndef FEATURE_REDHAWK
@@ -4875,8 +4899,8 @@ VOID ETW::InfoLog::RuntimeInformation(INT32 type)
 
             LPCGUID comGUID=&g_EEComObjectGuid;
 
-            LPWSTR lpwszCommandLine = W("");
-            LPWSTR lpwszRuntimeDllPath = (LPWSTR)dllPath;
+            PCWSTR lpwszCommandLine = W("");
+            PCWSTR lpwszRuntimeDllPath = (PCWSTR)dllPath;
 
 #ifndef FEATURE_CORECLR
             startupFlags = CorHost2::GetStartupFlags();
@@ -4976,6 +5000,250 @@ VOID ETW::InfoLog::RuntimeInformation(INT32 type)
             }
         }
     } EX_CATCH { } EX_END_CATCH(SwallowAllExceptions);
+}
+
+/* Fires ETW events every time a pdb is dynamically loaded.
+*
+* The ETW events correspond to sending parts of the pdb in roughly 
+* 64K sized chunks in order. Additional information sent is as follows:
+* ModuleID, TotalChunks, Size of Current Chunk, Chunk Number, CLRInstanceID
+*
+* Note: The current implementation does not support reflection.emit.
+* The method will silently return without firing an event.
+*/
+
+VOID ETW::CodeSymbolLog::EmitCodeSymbols(Module* pModule)
+{
+#if  !defined(FEATURE_PAL) //UNIXTODO: Enable EmitCodeSymbols
+    CONTRACTL {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_ANY;
+        SO_NOT_MAINLINE;
+    }
+    CONTRACTL_END;
+
+
+    EX_TRY {
+        if (ETW_TRACING_CATEGORY_ENABLED(
+                MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                TRACE_LEVEL_VERBOSE,
+                CLR_CODESYMBOLS_KEYWORD))
+        {
+            if (pModule != NULL)
+            {
+                UINT16 clrInstanceID = GetClrInstanceId();
+                UINT64 moduleID = (ModuleID)pModule;
+                DWORD length = 0;
+                // We silently exit if pdb is of length 0 instead of sending an event with no pdb bytes
+                if (CodeSymbolLog::GetInMemorySymbolsLength(pModule, &length) == S_OK && length > 0)
+                {
+                    // The maximum data size allowed is 64K - (Size of the Event_Header) 
+                    // Since the actual size of user data can only be determined at runtime
+                    // we simplify the header size value to be 1000 bytes as a conservative 
+                    // estmate. 
+                    static const DWORD maxDataSize = 63000;
+
+                    ldiv_t qr = ldiv(length, maxDataSize);
+
+                    // We do not allow pdbs of size greater than 2GB for now, 
+                    // so totalChunks should fit in 16 bits.
+                    if (qr.quot < UINT16_MAX)
+                    {
+                        // If there are trailing bits in the last chunk, then increment totalChunks by 1
+                        UINT16 totalChunks = (UINT16)(qr.quot + ((qr.rem != 0) ? 1 : 0));
+                        NewArrayHolder<BYTE> chunk(new BYTE[maxDataSize]);
+                        DWORD offset = 0;
+                        for (UINT16 chunkNum = 0; offset < length; chunkNum++)
+                        {
+                            DWORD lengthRead = 0;
+                            // We expect ReadInMemorySymbols to always return maxDataSize sized chunks
+                            // Or it is the last chunk and it is less than maxDataSize.
+                            CodeSymbolLog::ReadInMemorySymbols(pModule, offset, chunk, maxDataSize, &lengthRead);
+
+                            _ASSERTE(lengthRead == maxDataSize || // Either we are in the first to (n-1)th chunk
+                                (lengthRead < maxDataSize && chunkNum + 1 == totalChunks)); // Or we are in the last chunk
+
+                            FireEtwCodeSymbols(moduleID, totalChunks, chunkNum, lengthRead, chunk, clrInstanceID);
+                            offset += lengthRead;
+                        }
+                    }
+                }
+            }
+        }
+    } EX_CATCH{} EX_END_CATCH(SwallowAllExceptions);
+#endif//  !defined(FEATURE_PAL)
+}
+
+/* Returns the length of an in-memory symbol stream
+*
+* If the module has in-memory symbols the length of the stream will
+* be placed in pCountSymbolBytes. If the module doesn't have in-memory
+* symbols, *pCountSymbolBytes = 0
+*
+* Returns S_OK if the length could be determined (even if it is 0)
+*
+* Note: The current implementation does not support reflection.emit.
+* CORPROF_E_MODULE_IS_DYNAMIC will be returned in that case.
+* 
+* //IMPORTANT NOTE: The desktop code outside the Project K branch 
+* contains copies of this function in the clr\src\vm\proftoeeinterfaceimpl.cpp
+* file of the desktop version corresponding to the profiler version
+* of this feature. Anytime that feature/code is ported to Project K 
+* the code below should be appropriately merged so as to avoid 
+* duplication. 
+*/
+
+HRESULT ETW::CodeSymbolLog::GetInMemorySymbolsLength(
+    Module* pModule,
+    DWORD* pCountSymbolBytes)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_ANY;
+        SO_NOT_MAINLINE;
+    }
+    CONTRACTL_END;
+
+    HRESULT hr = S_OK;
+    if (pCountSymbolBytes == NULL)
+    {
+        return E_INVALIDARG;
+    }
+    *pCountSymbolBytes = 0;
+
+    if (pModule == NULL)
+    {
+        return E_INVALIDARG;
+    }
+    if (pModule->IsBeingUnloaded())
+    {
+        return CORPROF_E_DATAINCOMPLETE;
+    }
+
+    //This method would work fine on reflection.emit, but there would be no way to know
+    //if some other thread was changing the size of the symbols before this method returned.
+    //Adding events or locks to detect/prevent changes would make the scenario workable
+    if (pModule->IsReflection())
+    {
+        return COR_PRF_MODULE_DYNAMIC;
+    }
+
+    CGrowableStream* pStream = pModule->GetInMemorySymbolStream();
+    if (pStream == NULL)
+    {
+        return S_OK;
+    }
+
+    STATSTG SizeData = { 0 };
+    hr = pStream->Stat(&SizeData, STATFLAG_NONAME);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    if (SizeData.cbSize.u.HighPart > 0)
+    {
+        return COR_E_OVERFLOW;
+    }
+    *pCountSymbolBytes = SizeData.cbSize.u.LowPart;
+
+    return S_OK;
+}
+
+/* Reads bytes from an in-memory symbol stream
+*
+* This function attempts to read countSymbolBytes of data starting at offset
+* symbolsReadOffset within the in-memory stream. The data will be copied into
+* pSymbolBytes which is expected to have countSymbolBytes of space available.
+* pCountSymbolsBytesRead contains the actual number of bytes read which
+* may be less than countSymbolBytes if the end of the stream is reached.
+*
+* Returns S_OK if a non-zero number of bytes were read.
+*
+* Note: The current implementation does not support reflection.emit.
+* CORPROF_E_MODULE_IS_DYNAMIC will be returned in that case.
+*
+* //IMPORTANT NOTE: The desktop code outside the Project K branch
+* contains copies of this function in the clr\src\vm\proftoeeinterfaceimpl.cpp
+* file of the desktop version corresponding to the profiler version
+* of this feature. Anytime that feature/code is ported to Project K
+* the code below should be appropriately merged so as to avoid
+* duplication.
+
+*/
+
+HRESULT ETW::CodeSymbolLog::ReadInMemorySymbols(
+    Module* pModule,
+    DWORD symbolsReadOffset,
+    BYTE* pSymbolBytes,
+    DWORD countSymbolBytes,
+    DWORD* pCountSymbolBytesRead)
+{
+    CONTRACTL
+    {
+        NOTHROW;
+        GC_NOTRIGGER;
+        MODE_ANY;
+        SO_NOT_MAINLINE;
+    }
+    CONTRACTL_END;
+
+    HRESULT hr = S_OK;
+    if (pSymbolBytes == NULL)
+    {
+        return E_INVALIDARG;
+    }
+    if (pCountSymbolBytesRead == NULL)
+    {
+        return E_INVALIDARG;
+    }
+    *pCountSymbolBytesRead = 0;
+
+    if (pModule == NULL)
+    {
+        return E_INVALIDARG;
+    }
+    if (pModule->IsBeingUnloaded())
+    {
+        return CORPROF_E_DATAINCOMPLETE;
+    }
+
+    //This method would work fine on reflection.emit, but there would be no way to know
+    //if some other thread was changing the size of the symbols before this method returned.
+    //Adding events or locks to detect/prevent changes would make the scenario workable
+    if (pModule->IsReflection())
+    {
+        return COR_PRF_MODULE_DYNAMIC;
+    }
+
+    CGrowableStream* pStream = pModule->GetInMemorySymbolStream();
+    if (pStream == NULL)
+    {
+        return E_INVALIDARG;
+    }
+
+    STATSTG SizeData = { 0 };
+    hr = pStream->Stat(&SizeData, STATFLAG_NONAME);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    if (SizeData.cbSize.u.HighPart > 0)
+    {
+        return COR_E_OVERFLOW;
+    }
+    DWORD streamSize = SizeData.cbSize.u.LowPart;
+    if (symbolsReadOffset >= streamSize)
+    {
+        return E_INVALIDARG;
+    }
+
+    *pCountSymbolBytesRead = min(streamSize - symbolsReadOffset, countSymbolBytes);
+    memcpy_s(pSymbolBytes, countSymbolBytes, ((BYTE*)pStream->GetRawBuffer().StartAddress()) + symbolsReadOffset, *pCountSymbolBytesRead);
+
+    return S_OK;
 }
 
 /*******************************************************/
@@ -5857,7 +6125,7 @@ VOID ETW::LoaderLog::SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL
     CV_INFO_PDB70 cvInfoNative = {0};
     GetCodeViewInfo(pModule, &cvInfoIL, &cvInfoNative);
 
-    PWCHAR ModuleILPath=W(""), ModuleNativePath=W("");
+    PWCHAR ModuleILPath=(PWCHAR)W(""), ModuleNativePath=(PWCHAR)W("");
 
     if(bFireDomainModuleEvents)
     {
